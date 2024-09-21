@@ -319,7 +319,7 @@ int main(){
 
     scanner.show_labels();
 
-    cv::Mat final(binary_img.size(), CV_8UC1, cv::Scalar(0));
+    cv::Mat final(binary_img.size(), CV_8UC3, cv::Scalar(0));
     std::cout << final.rows << ' '<< final.cols << '\n';
     std::cout << binary_img.rows << ' '<< binary_img.cols << '\n';
     int max_label_ = 0;
@@ -345,12 +345,15 @@ int main(){
     //     if(scanner.label(i) == max_count_label)
     //         final.at<uchar>(graph.node(i).x, graph.node(i).y) = 255;
     // }
+
     uchar color = 255;
-    uchar color_diff = (220)/max_label_;
+    uchar color_diff = (255)/max_label_;
     for(int label=1; label <= max_label_; ++label){
         for(int j=0; j < graph.size(); ++j){
             if(scanner.label(j) == label){
-            final.at<uchar>(graph.node(j).x, graph.node(j).y) = color;
+		    final.at<uchar>(graph.node(j).x, graph.node(j).y*3) = color;
+		    final.at<uchar>(graph.node(j).x, graph.node(j).y*3+1) = color/2;
+		    final.at<uchar>(graph.node(j).x, graph.node(j).y*3+2) = color/3;
             }
         }
         color-=color_diff;
