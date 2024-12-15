@@ -305,7 +305,7 @@ class DBSCAN{
 };
 
 int main(){
-    cv::Mat img = imread("/home/krutarth/Desktop/gdbscan/test.jpeg", cv::IMREAD_COLOR);
+    cv::Mat img = imread("/home/krutarth/projects/dbscan/demo.png", cv::IMREAD_COLOR);
     cv::Mat grey_img;
     cv::Mat binary_img;
     cvtColor(img, grey_img, cv::COLOR_BGR2GRAY);
