@@ -14,10 +14,11 @@ int main(){
         sin >> p.x >> p.y;
         points.push_back(p);
     }
-    DBSCAN<double> scanner(0.1, 18);
+    DBSCAN<double> scanner(0.1, 10);
     int size=0;
-    for(int i=0;i < 1; ++i){
+    for(int i=0;i < 100; ++i){
         size = scanner.identify_cluster(points);
+        std::cout << i << std::endl;
     }
     std::ofstream fout("clustered.txt");
     for(int i=0;i < size; ++i){

@@ -2,13 +2,30 @@
 #include <cmath>
 
 int main(){
-    double r1=10.0, r2=12.0;
-    double theta = 0;
+    double sq1=5,sq2=10,dmin=0.05;
     std::ofstream fout("build/test.txt");
-    for(;theta<2*M_PI;theta+=0.0001){
-        fout << (r1 * cos(theta)) << ' ' << (r1 * sin(theta)) << std::endl;
-        fout << (r2 * cos(theta)) << ' ' << (r2 * sin(theta)) << std::endl;
+    for(double x=-sq1;x<=sq1;x+=dmin){
+        for(double y=-sq1;y<=sq1;y+=dmin){
+            fout << x << ' ' << y << std::endl;
+        }
     }
+    for(double x=-sq2;x<=sq2;x+=dmin){
+        for(double y=-sq2;y<=-(sq1+sq2)/2;y+=dmin){
+            fout << x << ' ' << y << std::endl;
+        }
+        for(double y=(sq1+sq2)/2;y<=sq2;y+=dmin){
+            fout << x << ' ' << y << std::endl;
+        }
+    }
+    for(double y=-sq2;y<=sq2;y+=dmin){
+        for(double x=-sq2;x<=-(sq1+sq2)/2;x+=dmin){
+            fout << x << ' ' << y << std::endl;
+        }
+        for(double x=(sq1+sq2)/2;x<=sq2;x+=dmin){
+            fout << x << ' ' << y << std::endl;
+        }
+    }
+    
     fout.close();
     return 0;
 }

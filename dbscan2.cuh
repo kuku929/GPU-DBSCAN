@@ -1,9 +1,10 @@
 #include <cwchar>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <exception>
 #include <cuda_runtime.h>
-#define SIZE 32
+#define SIZE 96
 typedef unsigned char uchar;
 
 __device__ __managed__ int true_count = 1;
@@ -62,17 +63,20 @@ __global__ void reset(int node, uchar *frontier, uchar *v){
 }
 
 template<typename T>
-__global__ void num_neighbors(int *count_list, Point<T> *points, int *adj_list, int offset, int no_of_nodes, float eps){
+__global__ void num_neighbors(int *count_list, T *points, int *adj_list, int offset, int no_of_nodes, float eps){
     int index = blockIdx.x*SIZE + threadIdx.x;
     if(index < no_of_nodes){
         int temp=0;
-        int stride = offset*index;
+        int glob_stride = offset*index;
+        float x=points[index<<1], y=points[(index<<1) + 1];
         for(int i=0;i < no_of_nodes; ++i){
-            if(i == index) continue;
-            // float dist = sqrt((points[index].x-points[i].x)*(points[index].x-points[i].x) + (points[index].y-points[i].y)*(points[index].y-points[i].y));
-            if(points[index].euclidean_distance(points[i]) <= eps){
-                adj_list[stride + temp] = i;
-                temp++;
+            T dist = abs(x-points[i<<1]);
+            if(dist <= eps){
+                dist+=abs(y-points[(i<<1) + 1]);
+                if(dist <= eps){
+                    adj_list[glob_stride + temp] = i;
+                    temp++;
+                }
             }
         }
         count_list[index]=temp;
@@ -92,7 +96,7 @@ class DBSCAN{
         uchar *labels;
 		uchar *frontier; 
 		uchar *v; 
-		Point<T> *dev_nodes;
+		T *dev_nodes;
         int *adj_list; 
         int *dev_prefix;
         int *prefix_sum;
@@ -100,7 +104,7 @@ class DBSCAN{
     public:
         DBSCAN(float eps, int min_pts) :  eps(eps), min_pts(min_pts)
         {
-			this->MAX_NODES = 30000;
+			this->MAX_NODES = 30720;
 			this->dmin = 0.005;
 			this->MAX_NEIGHBORS = (MAX_NODES * (4 * eps * eps)/(dmin * dmin));
 			this->OFFSET = 4 * eps * eps/(dmin * dmin);
@@ -114,7 +118,7 @@ class DBSCAN{
 			}
 			
             //allocate nodes on device
-            cudaMalloc(&dev_nodes, sizeof(Point<T>)*MAX_NODES);
+            cudaMalloc(&dev_nodes, 2 * sizeof(T)*MAX_NODES);
             cudaMalloc(&dev_neighbor_list, sizeof(int)*MAX_NODES);
             // allocating memory to adjacency list
 			// dmin is the minimum distance between two points,
@@ -142,26 +146,36 @@ class DBSCAN{
         int identify_cluster(std::vector<Point<T>> &nodes){
 			// this will be the effective size, We ignore all points 
 			// after MAX_NODES!
+			
 			if(nodes.size() > MAX_NODES){
     			std::cerr << "Ignoring " << nodes.size() - MAX_NODES << " points!" << std::endl;
     			std::cerr << "Yours Truly, DBSCAN" << std::endl;
 			}
 			no_nodes = min(MAX_NODES,(int)nodes.size());
+			
+			// we flatten it for now
+			std::vector<T> flat_nodes(no_nodes*2, 0);
+			for(int i=0;i < 2*no_nodes; i+=2){
+			    flat_nodes[i] = nodes[i/2].x;
+			    flat_nodes[i+1] = nodes[i/2].y;
+			}
             std::vector<int> neighbor_list(no_nodes, 0);
             //allocate nodes on device
-            cudaMemcpy(dev_nodes, nodes.data(), sizeof(Point<T>)*no_nodes, cudaMemcpyHostToDevice);
+            cudaMemcpy(dev_nodes, flat_nodes.data(), 2 * sizeof(T)*no_nodes, cudaMemcpyHostToDevice);
 			cudaError_t err = cudaGetLastError();
             //find neighbors
             dim3 dim_block(SIZE, 1, 1);
             dim3 dim_grid((no_nodes + SIZE-1)/SIZE, 1, 1);
             num_neighbors<T><<<dim_grid, dim_block>>>(dev_neighbor_list, dev_nodes, adj_list, this->OFFSET, no_nodes, eps);
         
-			////debug
-			//std::cout << "no of nodes: " << no_nodes << std::endl; 
-			//for(int i=0;i < no_nodes; ++i){
-				//std::cout << neighbor_list[i] << ' ';
-			//}
-			//std::cout << '\n';
+            cudaMemcpy(neighbor_list.data(), dev_neighbor_list, sizeof(int)*no_nodes, cudaMemcpyDeviceToHost);
+            
+			// //debug
+			// std::cout << "no of nodes: " << no_nodes << std::endl; 
+			// for(int i=0;i < no_nodes; ++i){
+			// 	std::cout << neighbor_list[i] << ' ';
+			// }
+			// std::cout << '\n';
 		
             // allocating memory to adjacency list
             // this is for testing, I am not sure 
@@ -169,7 +183,6 @@ class DBSCAN{
             // keep this for now. Remove this if 
             // this message never shows up in testing
             // that should speed things up
-            cudaMemcpy(neighbor_list.data(), dev_neighbor_list, sizeof(int)*no_nodes, cudaMemcpyDeviceToHost);
             prefix_sum = new int[no_nodes+1];
             prefix_sum[0] = 0;
             for(int i=1;i <= no_nodes; ++i){
