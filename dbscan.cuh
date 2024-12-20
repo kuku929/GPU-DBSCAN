@@ -123,12 +123,12 @@ class DBSCAN{
             //back to host
             cudaMemcpy(neighbor_list.data(), dev_neighbor_list, sizeof(int)*neighbor_list.size(), cudaMemcpyDeviceToHost);
         
-            // //debug
-            // for(int i=0;i < nodes.size(); ++i){
-            //     std::cout << neighbor_list[i] << ' ';
-            // }
-            // std::cout << '\n';
-        
+			 //debug
+			 for(int i=0;i < nodes.size(); ++i){
+				 std::cout << neighbor_list[i] << ' ';
+			 }
+			 std::cout << '\n';
+		
             //allocating memory to adjacency list
             prefix_sum = new int[nodes.size()+1];
             prefix_sum[0] = 0;

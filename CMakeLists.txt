@@ -10,7 +10,10 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_86 -rdc=true -g -G")
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-add_executable(dbscan main.cu dbscan.cuh)
+add_executable(dbscan main.cu)
 target_link_libraries(dbscan ${OpenCV_LIBS})
+target_compile_options(dbscan PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+                       --use_fast_math
+                       >)
 
 set_target_properties(dbscan PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
